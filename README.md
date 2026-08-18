@@ -58,6 +58,9 @@ pkgadd -d cups154-1.5.4.pkg cups154
 /usr/local/cups154/sbin/cupsd
 ```
 
+(`cups154-1.5.4.pkg.gz` is the same thing, half the download —
+`gunzip` it first, `pkgadd` needs it uncompressed.)
+
 It installs entirely under `/usr/local/cups154` and does **not** touch SCO's
 own `cups` component, so it can sit alongside a stock install. The postinstall
 handles the OpenServer-specific setup — see below for what and why.
