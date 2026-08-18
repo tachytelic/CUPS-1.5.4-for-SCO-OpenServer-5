@@ -1,0 +1,62 @@
+From 1f75ba26aae058210ebe3c603d5a1f307233f550 Mon Sep 17 00:00:00 2001
+From: Paul Trowbridge <paul@accendo.co.uk>
+Date: Tue, 18 Aug 2026 13:34:34 +0000
+Subject: [PATCH 3/6] portability: don't assume getaddrinfo implies AF_INET6
+
+http-addrlist.c guarded every AF_INET6 reference with #ifdef AF_INET6
+except the two in the HAVE_GETADDRINFO path, which fails to build on
+SCO OpenServer 5 -- it has getaddrinfo() in libsocket but no IPv6 at
+all.  Guard them the same way the rest of the file does.
+
+Also drop test/ippserver from the build; it is an IPP Everywhere demo
+server that is unconditionally IPv6 and is not installed.
+---
+ cups/http-addrlist.c | 8 +++++++-
+ test/Makefile        | 2 --
+ 2 files changed, 7 insertions(+), 3 deletions(-)
+
+diff --git a/cups/http-addrlist.c b/cups/http-addrlist.c
+index 1a28b5a..f8afbc2 100644
+--- a/cups/http-addrlist.c
++++ b/cups/http-addrlist.c
+@@ -347,7 +347,11 @@ httpAddrGetList(const char *hostname,	/* I - Hostname, IP address, or NULL for p
+       */
+ 
+       for (current = results; current; current = current->ai_next)
+-        if (current->ai_family == AF_INET || current->ai_family == AF_INET6)
++        if (current->ai_family == AF_INET
++#  ifdef AF_INET6
++	    || current->ai_family == AF_INET6
++#  endif /* AF_INET6 */
++	    )
+ 	{
+ 	 /*
+           * Copy the address over...
+@@ -360,10 +364,12 @@ httpAddrGetList(const char *hostname,	/* I - Hostname, IP address, or NULL for p
+ 	    return (NULL);
+ 	  }
+ 
++#  ifdef AF_INET6
+           if (current->ai_family == AF_INET6)
+ 	    memcpy(&(temp->addr.ipv6), current->ai_addr,
+ 	           sizeof(temp->addr.ipv6));
+ 	  else
++#  endif /* AF_INET6 */
+ 	    memcpy(&(temp->addr.ipv4), current->ai_addr,
+ 	           sizeof(temp->addr.ipv4));
+ 
+diff --git a/test/Makefile b/test/Makefile
+index 1d28b1a..4f93aeb 100644
+--- a/test/Makefile
++++ b/test/Makefile
+@@ -45,10 +45,8 @@ TESTFILES	=	\
+ 			ipp-2.1.test \
+ 			ipp-2.2.test
+ OBJS		=	\
+-			ippserver.o \
+ 			ipptool.o
+ TARGETS		=	\
+-			ippserver \
+ 			ipptool \
+ 			ipptool-static
+ 

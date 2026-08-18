@@ -1,0 +1,51 @@
+From 1b154c6c8629c3ba660a3da6d242b2a537156b56 Mon Sep 17 00:00:00 2001
+From: Paul Trowbridge <paul@accendo.co.uk>
+Date: Tue, 18 Aug 2026 13:36:08 +0000
+Subject: [PATCH 4/6] portability: fall back to int when socklen_t is missing
+
+CUPS 1.5.4 uses socklen_t unconditionally (12 sites across libcups,
+the scheduler and the SNMP code) but never checks for it.  SCO
+OpenServer 5 predates POSIX 2001 and has no such type.  Add an
+AC_CHECK_TYPE with an int fallback rather than patching each site.
+---
+ config-scripts/cups-common.m4 | 7 +++++++
+ config.h.in                   | 8 ++++++++
+ 2 files changed, 15 insertions(+)
+
+diff --git a/config-scripts/cups-common.m4 b/config-scripts/cups-common.m4
+index e8af005..d516797 100644
+--- a/config-scripts/cups-common.m4
++++ b/config-scripts/cups-common.m4
+@@ -125,6 +125,13 @@ AC_SUBST(LIBPAPER)
+ 
+ dnl Checks for header files.
+ AC_HEADER_STDC
++
++dnl Pre-POSIX-2001 systems (e.g. SCO OpenServer 5) have no socklen_t; CUPS
++dnl uses it unconditionally, so fall back to int where it is missing...
++AC_CHECK_TYPE([socklen_t], [], [AC_DEFINE([socklen_t], [int],
++	[Define to "int" if <sys/socket.h> does not define socklen_t.])],
++	[#include <sys/types.h>
++#include <sys/socket.h>])
+ AC_CHECK_HEADER(crypt.h,AC_DEFINE(HAVE_CRYPT_H))
+ AC_CHECK_HEADER(langinfo.h,AC_DEFINE(HAVE_LANGINFO_H))
+ AC_CHECK_HEADER(malloc.h,AC_DEFINE(HAVE_MALLOC_H))
+diff --git a/config.h.in b/config.h.in
+index 198319e..d7ac52c 100644
+--- a/config.h.in
++++ b/config.h.in
+@@ -106,6 +106,14 @@
+ #undef CUPS_DEFAULT_DOMAINSOCKET
+ 
+ 
++/*
++ * Does <sys/socket.h> define socklen_t?  Pre-POSIX-2001 systems such as
++ * SCO OpenServer 5 do not.
++ */
++
++#undef socklen_t
++
++
+ /*
+  * Default WebInterface value...
+  */

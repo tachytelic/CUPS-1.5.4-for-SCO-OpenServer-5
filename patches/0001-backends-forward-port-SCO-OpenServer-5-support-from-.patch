@@ -1,0 +1,361 @@
+From 82eea41d22f07497dcc2ebf8ae2ae1f8dd597771 Mon Sep 17 00:00:00 2001
+From: Paul Trowbridge <paul@accendo.co.uk>
+Date: Tue, 18 Aug 2026 13:28:55 +0000
+Subject: [PATCH 1/6] backends: forward-port SCO OpenServer 5 support from
+ cups-1.1.23B-SRC
+
+Adds _SCO_DS / _unixware device enumeration to the parallel, serial and
+usb backends, derived from SCO's own 1.1.23 patch set (recovered by
+diffing the pristine .c- files against the shipped .c in the MP4/MP5
+source drop).
+
+Deviations from SCO's original:
+- The UDI device-ID query is behind -DHAVE_UDI_H.  <udi/udi.h> and
+  <sys/lp.h> ship with the SCO HDK, which is not on a stock OpenServer
+  install.  Without it enumeration still works, reporting "Unknown"
+  for make/model.
+- The OSR5 USB branch reports device class "direct" rather than SCO's
+  "usb", matching every other USB branch in the file.
+- The printer-status block SCO added to print_device() is omitted; it
+  needs LP_IS_NOPAPER from <sys/lp.h> and 1.5.4 restructured that code.
+---
+ backend/parallel.c |  44 +++++++++++
+ backend/serial.c   |  53 ++++++++++++++
+ backend/usb-unix.c | 177 +++++++++++++++++++++++++++++++++++++++++++++
+ backend/usb.c      |   2 +-
+ 4 files changed, 275 insertions(+), 1 deletion(-)
+
+diff --git a/backend/parallel.c b/backend/parallel.c
+index d99855a..5a25029 100644
+--- a/backend/parallel.c
++++ b/backend/parallel.c
+@@ -597,6 +597,50 @@ list_devices(void)
+       printf("direct parallel:%s \"Unknown\" \"Parallel Port #%d\"\n", device, i + 1);
+     }
+   }
++#elif defined(_unixware)
++  int	i;			/* Looping var */
++  int	fd;			/* File descriptor */
++  char	device[255];		/* Device filename */
++
++
++  for (i = 0; i < 3; i ++)
++  {
++    sprintf(device, "/dev/lp%d", i);
++
++   /*
++    * Since the backend is asked for the list of supported devices only
++    * at startup, it should list all ports that are present even if there
++    * is no attached printer.   Otherwise, after attaching a printer,
++    * the scheduler will have to be restarted for it to see the port.
++    */
++
++    if ((fd = open(device, O_WRONLY)) >= 0 || errno == EIO)
++    {
++      if (fd >= 0)
++        close(fd);
++      printf("direct parallel:%s \"Unknown\" \"Parallel Port #%d\"\n", device, i + 1);
++    }
++  }
++#elif defined(_SCO_DS)			/* SCO OpenServer */
++  int	portnum;			/* Looping var */
++  int	fd;				/* File descriptor */
++  char	device[255];			/* Device filename */
++
++
++  for (portnum = 0; portnum <= 9; portnum ++)
++  {
++    sprintf(device, "/dev/lp%d", portnum);
++    if ((fd = open(device, O_WRONLY)) >= 0)
++    {
++      close(fd);
++      printf("direct parallel:%s \"Unknown\" \"Parallel Port %s (", device,
++             device + 5);
++      if (portnum < 3)
++	printf("LPT%d)\"\n", portnum + 1);
++      else
++	printf("PCI)\"\n");
++    }
++  }
+ #endif
+ }
+ 
+diff --git a/backend/serial.c b/backend/serial.c
+index 4223fcf..26fea59 100644
+--- a/backend/serial.c
++++ b/backend/serial.c
+@@ -28,6 +28,14 @@
+ #include "backend-private.h"
+ #include <stdio.h>
+ 
++#ifdef _SCO_DS				/* SCO OpenServer */
++#  define _SVID3
++#  include <glob.h>
++#  include <fnmatch.h>
++#  include <sys/types.h>
++#  include <sys/stat.h>
++#endif /* _SCO_DS */
++
+ #ifdef __hpux
+ #  include <sys/modem.h>
+ #endif /* __hpux */
+@@ -1269,6 +1277,51 @@ list_devices(void)
+       IOObjectRelease(serialPortIterator);
+     }
+   }
++#elif defined(_unixware)
++  int	i;			/* Looping var */
++  int	fd;			/* File descriptor */
++  char	device[255];		/* Device filename */
++
++
++  for (i = 0; i < 2; i ++)
++  {
++    sprintf(device, "/dev/tty%02d", i);
++    if ((fd = open(device, O_WRONLY | O_NOCTTY | O_NDELAY)) >= 0)
++    {
++      close(fd);
++      printf("serial serial:%s?baud=115200 \"Unknown\" \"Serial Port #%d\"\n",
++             device, i + 1);
++    }
++  }
++#elif defined(_SCO_DS)			/* SCO OpenServer */
++  glob_t	globbuf;		/* Glob buffer */
++  char		**name;			/* Current device name */
++  struct stat	statbuf;		/* File information */
++
++
++ /*
++  * Under OpenServer, serial devices always have two names, tty*[a-z]* and a
++  * matching name with an upper case character.  Hardware flow control is only
++  * enabled for the upper case version.  ttys that are not serial ports will
++  * not have an upper case name.  Serial devices are intentionally not opened
++  * here.
++  */
++
++  if (!glob("/dev/tty*[A-Z]*", 0, NULL, &globbuf))
++  {
++    for (name = globbuf.gl_pathv; *name != NULL; name ++)
++      if (stat(*name, &statbuf) != -1 && S_ISCHR(statbuf.st_mode))
++      {
++        printf("serial serial:%s?baud=115200 \"Unknown\" \"Serial Port %s",
++	       *name, (*name) + 5);
++	if (!fnmatch("/dev/tty[12]A", *name, 0))
++	  printf(" (COM%c)", (*name)[8]);
++        puts("\"");
++      }
++    globfree(&globbuf);
++  }
++
++  printf("serial serial \"Unknown\" \"Serial Port (other)\"\n");
+ #endif
+ }
+ 
+diff --git a/backend/usb-unix.c b/backend/usb-unix.c
+index b0365e4..f2bcff6 100644
+--- a/backend/usb-unix.c
++++ b/backend/usb-unix.c
+@@ -31,6 +31,88 @@
+ #include <sys/select.h>
+ 
+ 
++/*
++ * SCO OpenServer / UnixWare support.
++ */
++
++#if (_SCO_DS - 0 == 2)			/* SCO OpenServer 6 / UnixWare */
++#  define _unixware
++#endif /* _SCO_DS == 2 */
++
++#if (_SCO_DS - 0 == 1)			/* SCO OpenServer 5 */
++#  define _SVID3
++#  include <glob.h>
++#  include <fnmatch.h>
++#  include <sys/types.h>
++#  include <sys/stat.h>
++#  ifdef HAVE_UDI_H
++#    define SCO_UDI
++#  endif /* HAVE_UDI_H */
++#endif /* _SCO_DS == 1 */
++
++#ifdef _unixware
++#  include <dirent.h>
++#  include <sys/lp.h>
++#  ifdef HAVE_UDI_H
++#    define SCO_UDI
++#  endif /* HAVE_UDI_H */
++#endif /* _unixware */
++
++#ifdef SCO_UDI
++/*
++ * SCO's UDI (Uniform Driver Interface) layer supplies the IEEE-1284 device ID
++ * string.  <udi/udi.h> ships with the SCO HDK, which is not part of a stock
++ * OpenServer install, so this is only compiled when the build is told the
++ * header is present (-DHAVE_UDI_H).  Without it the backend still enumerates
++ * printers -- it just reports "Unknown" for the make and model.
++ */
++
++#  define UDI_VERSION	0x0101
++#  include <udi/udi.h>
++#  include <sys/ioctl.h>
++
++#  define GIOMAP_IOCTL(x)	(int)(((int)'G' << 24) | (x))
++#  define UDI_GIO_DATA_XFER	GIOMAP_IOCTL(1)
++
++typedef struct giomap_uio
++{
++  void		*u_addr;		/* User buffer address */
++  udi_ubit32_t	u_count;		/* Transfer length (bytes) */
++  udi_status_t	u_error;		/* Error code (status) */
++  udi_ubit32_t	u_resid;		/* Amount outstanding */
++  udi_gio_op_t	u_op;			/* GIO operation */
++  udi_ubit32_t	tr_param_len;		/* Length of tr_params */
++  void		*tr_params;		/* User supplied tr_params */
++  udi_boolean_t	u_async;		/* Asynchronous ioctl() */
++  void		*u_handle;		/* For asynchronous requests */
++} giomap_uio_t;
++
++
++/*
++ * 'udi_gio_data_xfer()' - UDI_GIO_DATA_XFER ioctl wrapper.
++ */
++
++static int				/* O - 0 on success, -1 on error */
++udi_gio_data_xfer(int  fd,		/* I - Device file descriptor */
++                  int  op,		/* I - GIO operation */
++		  void *arg,		/* I - Data buffer */
++		  int  len)		/* I - Buffer length */
++{
++  giomap_uio_t	uio;			/* GIO request */
++
++
++  uio.u_addr       = arg;
++  uio.u_count      = len;
++  uio.u_error      = 0x12345;
++  uio.u_op         = op;
++  uio.tr_param_len = 0;
++  uio.u_async      = 0;
++
++  return (ioctl(fd, UDI_GIO_DATA_XFER, &uio));
++}
++#endif /* SCO_UDI */
++
++
+ /*
+  * Local functions...
+  */
+@@ -307,6 +389,101 @@ list_devices(void)
+     if (!access(device, 0))
+       printf("direct usb:%s \"Unknown\" \"USB Printer #%d (no reset)\"\n", device, i + 1);
+   }
++#elif defined(_unixware)
++  DIR		*dirp;			/* Directory */
++  struct dirent	*direntp;		/* Directory entry */
++  int		i;			/* Looping var */
++  char		device[255],		/* Device filename */
++		device_id[64 * 3];	/* Device ID string */
++#  ifdef SCO_UDI
++  int		fd;			/* File descriptor */
++#  endif /* SCO_UDI */
++
++
++ /*
++  * Look for device nodes that begin with /dev/usblp.
++  */
++
++  i = 1;
++  if ((dirp = opendir("/dev")) != NULL)
++  {
++    while ((direntp = readdir(dirp)) != NULL)
++    {
++      if (!strncmp(direntp->d_name, "usblp", 5))
++      {
++        sprintf(device, "/dev/%s", direntp->d_name);
++
++        device_id[0] = '\0';
++
++#  ifdef SCO_UDI
++        if ((fd = open(device, O_RDWR)) >= 0)
++	{
++	  if (udi_gio_data_xfer(fd, UDI_GIO_OP_READ | 0x04, device_id,
++	                        sizeof(device_id)) != 0)
++	    device_id[0] = '\0';
++
++	  close(fd);
++	}
++#  endif /* SCO_UDI */
++
++	if (device_id[0])
++	{
++          if (!_cups_strncasecmp(device_id + 128, "Hewlett-Packard ", 16))
++	    strcpy(device_id + 128, "HP");
++
++          printf("direct usb:%s \"%s %s\" \"USB Printer #%d\"\n", device,
++	         device_id + 128, device_id + 64, i ++);
++        }
++	else
++          printf("direct usb:%s \"Unknown\" \"USB Printer #%d\"\n", device, i ++);
++      }
++    }
++
++    closedir(dirp);
++  }
++#elif (_SCO_DS - 0 == 1)		/* SCO OpenServer 5 */
++  glob_t	globbuf;		/* Glob buffer */
++  char		**name;			/* Current device name */
++  struct stat	statbuf;		/* File information */
++  int		fd;			/* File descriptor */
++#  ifdef SCO_UDI
++  char		device_id[64 * 3];	/* Device ID string */
++#  endif /* SCO_UDI */
++
++
++ /*
++  * Under OpenServer, USB devices may have two names: /dev/usb/lp<n>, where n
++  * is 0 for the first printer discovered, and /dev/usb/lp.<tree-position>,
++  * where <tree-position> is stable for a given root/hub/device cabling
++  * configuration.
++  */
++
++  if (!glob("/dev/usb/lp*", 0, NULL, &globbuf))
++  {
++    for (name = globbuf.gl_pathv; *name != NULL; name ++)
++      if (stat(*name, &statbuf) != -1 && S_ISCHR(statbuf.st_mode) &&
++	  (fd = open(*name, O_WRONLY)) >= 0)
++      {
++	printf("direct usb:%s", *name);
++
++#  ifdef SCO_UDI
++	if (udi_gio_data_xfer(fd, UDI_GIO_OP_READ | 0x04, device_id,
++	                      sizeof(device_id)) == 0)
++	  printf(" \"%s %s\"", device_id + 128, device_id + 64);
++	else
++#  endif /* SCO_UDI */
++	  printf(" \"Unknown\"");
++
++	if ((*name)[11] == '.')
++	  printf(" \"USB printer %s\"\n", (*name) + 13);
++	else
++	  printf(" \"USB printer %s (by order of discovery)\"\n", (*name) + 5);
++
++	close(fd);
++      }
++
++    globfree(&globbuf);
++  }
+ #endif
+ }
+ 
+diff --git a/backend/usb.c b/backend/usb.c
+index ee8c1f4..905667b 100644
+--- a/backend/usb.c
++++ b/backend/usb.c
+@@ -59,7 +59,7 @@ int	print_device(const char *uri, const char *hostname,
+ #  include "usb-libusb.c"
+ #elif defined(__APPLE__)
+ #  include "usb-darwin.c"
+-#elif defined(__linux) || defined(__sun) || defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__) || defined(__DragonFly__) || defined(__FreeBSD_kernel__)
++#elif defined(__linux) || defined(__sun) || defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__) || defined(__DragonFly__) || defined(__FreeBSD_kernel__) || defined(_SCO_DS) || defined(_unixware)
+ #  include "usb-unix.c"
+ #else
+ /*

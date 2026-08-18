@@ -1,0 +1,6 @@
+# staged/assembled artefacts
+/stage/
+/build/
+*.tar.gz
+*.o
+*.log

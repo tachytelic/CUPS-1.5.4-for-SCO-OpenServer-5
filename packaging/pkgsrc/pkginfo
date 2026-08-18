@@ -1,0 +1,9 @@
+PKG=cups154
+NAME=CUPS 1.5.4 for OpenServer 5
+DESC=Common UNIX Printing System 1.5.4, with modern PDF printing via Ghostscript 9.06
+ARCH=IA32
+VERSION=1.5.4
+CATEGORY=application
+VENDOR=https://github.com/tachytelic
+CLASSES=none
+BASEDIR=/

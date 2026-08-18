@@ -1,0 +1,122 @@
+#!/bin/sh
+#
+# cups154 postinstall -- does the OpenServer-specific setup that CUPS's own
+# build cannot know about.  Every step here is idempotent: re-running pkgadd
+# must not undo an admin's edits.
+#
+# Bourne shell only.  OpenServer's /bin/sh has no $(...) and no [[ ]].
+
+PREFIX=/usr/local/cups154
+CONF=$PREFIX/etc/cups/cupsd.conf
+MARKER="# --- osr5 defaults applied by the cups154 package ---"
+
+echo ""
+echo "Configuring CUPS 1.5.4 for OpenServer 5 ..."
+
+# ---------------------------------------------------------------- 1. /usr/local/bin
+# Ships drwx------ on some installs, which stops the unprivileged "lp" user
+# executing anything in it -- including Ghostscript, which CUPS calls as a
+# filter.  Symptom without this: "Unable to execute gs program: Permission
+# denied" and a zero-byte print job.
+if [ -d /usr/local/bin ]; then
+	mode=`ls -ld /usr/local/bin 2>/dev/null | cut -c1-10`
+	case "$mode" in
+	drwxr-xr-x) : ;;
+	*)	echo "  - making /usr/local/bin traversable (was $mode)"
+		chmod 755 /usr/local/bin ;;
+	esac
+fi
+
+# ---------------------------------------------------------------- 2. Ghostscript
+# The gs 9.06 build for OpenServer needs libXt/libX11 from /usr/X11R6/lib,
+# which is not on the default runtime library search path.  If gs is present
+# but cannot start, wrap it.  If gs is absent, just say so -- CUPS works, it
+# simply cannot convert PDF.
+if [ -x /usr/local/bin/gs ]; then
+	if /usr/local/bin/gs --version >/dev/null 2>&1; then
+		echo "  - Ghostscript works, leaving it alone"
+	elif [ -f /usr/X11R6/lib/libXt.so ]; then
+		if [ ! -f /usr/local/bin/gs.real ]; then
+			echo "  - wrapping gs so it finds libXt in /usr/X11R6/lib"
+			mv /usr/local/bin/gs /usr/local/bin/gs.real
+			cat > /usr/local/bin/gs <<'WRAP'
+#!/bin/sh
+# Added by the cups154 package: gs needs libXt/libX11 from /usr/X11R6/lib,
+# which is not on the default runtime search path.  Undo with:
+#   mv /usr/local/bin/gs.real /usr/local/bin/gs
+if [ -n "$LD_LIBRARY_PATH" ]; then
+	LD_LIBRARY_PATH=/usr/X11R6/lib:$LD_LIBRARY_PATH
+else
+	LD_LIBRARY_PATH=/usr/X11R6/lib
+fi
+export LD_LIBRARY_PATH
+exec /usr/local/bin/gs.real "$@"
+WRAP
+			chmod 755 /usr/local/bin/gs
+		fi
+	else
+		echo "  ! gs is present but will not run and libXt was not found."
+		echo "    PDF printing will not work until that is sorted."
+	fi
+else
+	echo "  ! Ghostscript not found at /usr/local/bin/gs."
+	echo "    CUPS will work, but PDF files cannot be printed. See the README."
+fi
+
+# ---------------------------------------------------------------- 3. cupsd.conf
+# Applied once, and only to a config we have not already touched.
+if [ -f "$CONF" ] && grep "osr5 defaults applied" "$CONF" >/dev/null 2>&1; then
+	echo "  - cupsd.conf already carries the OpenServer defaults, leaving it"
+elif [ -f "$CONF" ]; then
+	echo "  - applying OpenServer defaults to cupsd.conf (backup: cupsd.conf.pre-cups154)"
+	cp "$CONF" "$CONF.pre-cups154"
+	host=`hostname 2>/dev/null`
+
+	# (a) Drop the UNIX-domain-socket listener.  On OpenServer, CUPS does not
+	#     treat a domain-socket peer as local, so "Allow localhost" never
+	#     matches and local certificate authentication fails -- admin
+	#     operations come back Forbidden or Unauthorized.  Over TCP loopback
+	#     everything works.  This is the single most important line here.
+	grep -v "^Listen .*cups\.sock" "$CONF" > "$CONF.tmp" && mv "$CONF.tmp" "$CONF"
+
+	# (b) CUPS 1.5 validates the Host: header strictly (DNS-rebinding
+	#     protection).  Without an alias, every request is "Bad Request".
+	grep "^ServerAlias" "$CONF" >/dev/null 2>&1 || echo "ServerAlias localhost" >> "$CONF"
+
+	# (c) Without ServerName, generated URLs read "UNKNOWN:631".
+	grep "^ServerName" "$CONF" >/dev/null 2>&1 || {
+		if [ -n "$host" ]; then echo "ServerName $host" >> "$CONF"; fi
+	}
+
+	# (d) Allow the loopback clients through.  "Allow all" is safe ONLY
+	#     because Listen is loopback-only -- see the README before exposing
+	#     cupsd on a real interface.
+	awk '/^<Location/ { inloc = 1 }
+	     { print }
+	     inloc && /^  Order allow,deny/ { print "  Allow all"; inloc = 0 }' \
+	    "$CONF" > "$CONF.tmp" && mv "$CONF.tmp" "$CONF"
+
+	echo "$MARKER" >> "$CONF"
+fi
+
+# ---------------------------------------------------------------- 4. done
+cat <<'DONE'
+
+CUPS 1.5.4 installed under /usr/local/cups154.
+
+  Start it:   /usr/local/cups154/sbin/cupsd
+  Web admin:  http://localhost:631/
+  Add queue:  /usr/local/cups154/sbin/lpadmin -p name -v ipp://ADDR/ipp/print \
+                  -m drv:///sample.drv/generic.ppd -E
+
+NOTE ON "lp": plain "lp" still resolves to /usr/bin/lp, the SVR4 spooler --
+this package does not replace it.  To make lp/lpstat/lpr mean CUPS, put
+/usr/local/cups154/bin ahead of /usr/bin on PATH:
+
+  PATH=/usr/local/cups154/bin:/usr/local/cups154/sbin:$PATH; export PATH
+
+Anything that calls /usr/bin/lp by absolute path is unaffected by that.
+
+DONE
+
+exit 0

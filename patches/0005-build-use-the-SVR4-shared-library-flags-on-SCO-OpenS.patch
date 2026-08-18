@@ -1,0 +1,27 @@
+From 00403943182cd3b16fd424b8e0bf9bd80ce81d24 Mon Sep 17 00:00:00 2001
+From: Paul Trowbridge <paul@accendo.co.uk>
+Date: Tue, 18 Aug 2026 13:37:22 +0000
+Subject: [PATCH 5/6] build: use the SVR4 shared-library flags on SCO
+ OpenServer
+
+SCO_SV fell through to the generic '-Wl,-soname,... -shared' case, which
+SCO's native i386ld rejects.  The existing UNIX_S (UnixWare) case already
+carries the right SVR4 flags -- '-Wl,-h,`basename $@` -G' -- which is
+also what SCO's own CUPS 1.1.23 Makedefs used.
+---
+ config-scripts/cups-sharedlibs.m4 | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/config-scripts/cups-sharedlibs.m4 b/config-scripts/cups-sharedlibs.m4
+index 75b3e8d..77bc003 100644
+--- a/config-scripts/cups-sharedlibs.m4
++++ b/config-scripts/cups-sharedlibs.m4
+@@ -35,7 +35,7 @@ if test x$enable_shared != xno; then
+ 			DSOXX="\$(CXX)"
+ 			DSOFLAGS="$DSOFLAGS -Wl,-h\`basename \$@\` -G \$(OPTIM)"
+ 			;;
+-		UNIX_S*)
++		UNIX_S*|SCO_SV*)
+ 			LIBCUPS="lib$cupsbase.so.2"
+ 			LIBCUPSCGI="libcupscgi.so.1"
+ 			LIBCUPSDRIVER="libcupsdriver.so.1"

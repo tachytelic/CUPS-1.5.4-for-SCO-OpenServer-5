@@ -1,0 +1,14 @@
+CUPS 1.5.4 is copyright 2007-2012 Apple Inc. and 1997-2007 Easy Software
+Products, and is provided under the GNU General Public License ("GPL") and
+GNU Library General Public License ("LGPL"), Version 2, with exceptions.
+
+The GNU LGPL applies to the CUPS and CUPS Imaging libraries; the GNU GPL
+applies to the remainder of the CUPS distribution.  The full text and the
+exceptions are in LICENSE.txt inside the CUPS source tree.
+
+The OpenServer 5 patches, build script and packaging in this repository are
+offered under the same terms.
+
+The SCO OpenServer backend support in patches/0001 is derived from SCO's own
+CUPS 1.1.23 source drop (cups-1.1.23B-SRC), shipped in OpenServer 5.0.7
+Maintenance Pack 4, which carries the same CUPS licence.

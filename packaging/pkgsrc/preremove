@@ -1,0 +1,24 @@
+#!/bin/sh
+# Stop our cupsd before the files go away.  Only ours -- never touch a stock
+# SCO cupsd, which lives at /usr/sbin/cupsd and is a different install.
+
+PREFIX=/usr/local/cups154
+
+pids=`ps -ef 2>/dev/null | grep "$PREFIX/sbin/cupsd" | grep -v grep | awk '{print $2}'`
+if [ -n "$pids" ]; then
+	echo "Stopping $PREFIX/sbin/cupsd ..."
+	kill $pids 2>/dev/null
+	sleep 3
+	for p in $pids; do
+		kill -0 $p 2>/dev/null && kill -9 $p 2>/dev/null
+	done
+fi
+
+# Leave the admin's cupsd.conf, PPDs and spool behind.  pkgrm removes what it
+# installed; anything created after the fact is the admin's, not ours.
+echo ""
+echo "Configuration under $PREFIX/etc/cups and spooled jobs are left in place."
+echo "Remove them by hand if you want them gone:  rm -rf $PREFIX"
+echo ""
+
+exit 0

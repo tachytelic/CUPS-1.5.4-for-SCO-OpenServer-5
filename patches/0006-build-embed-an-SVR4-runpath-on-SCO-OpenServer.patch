@@ -1,0 +1,29 @@
+From 5e9b3a4fed6637754c6380de737ee35f68d4fd3c Mon Sep 17 00:00:00 2001
+From: Paul Trowbridge <paul@accendo.co.uk>
+Date: Tue, 18 Aug 2026 15:04:25 +0000
+Subject: [PATCH 6/6] build: embed an SVR4 runpath on SCO OpenServer
+
+Without -R$libdir, binaries installed under a non-standard prefix cannot
+find libcupsmime/libcupscgi/libcupsppdc at run time.  Worse, /usr/lib on
+OpenServer carries libcups.so.2 symlinked to SCO's stock 1.1.23 component,
+so an un-rpathed 1.5.4 binary silently resolves libcups to the 2005
+library.  SCO's i386ld takes SVR4 -R, so reuse the existing SunOS case.
+---
+ config-scripts/cups-sharedlibs.m4 | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/config-scripts/cups-sharedlibs.m4 b/config-scripts/cups-sharedlibs.m4
+index 77bc003..f48b825 100644
+--- a/config-scripts/cups-sharedlibs.m4
++++ b/config-scripts/cups-sharedlibs.m4
+@@ -225,8 +225,8 @@ if test "$DSO" != ":"; then
+                 	LDFLAGS="$LDFLAGS -Wl,+s,+b,$libdir"
+                 	EXPORT_LDFLAGS="-Wl,+s,+b,$libdir"
+ 			;;
+-                SunOS*)
+-                	# Solaris...
++                SunOS*|SCO_SV*)
++                	# Solaris and SCO OpenServer -- SVR4 -R runpath...
+ 			if test $exec_prefix != /usr; then
+ 				DSOFLAGS="-R$libdir $DSOFLAGS"
+ 				DSO32FLAGS="-R$LIB32DIR $DSO32FLAGS"

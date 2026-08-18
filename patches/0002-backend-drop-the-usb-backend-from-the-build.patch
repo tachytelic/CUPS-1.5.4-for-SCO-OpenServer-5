@@ -1,0 +1,31 @@
+From bf78d60ff0a3182048cd65244e0ffae3ab82fc3f Mon Sep 17 00:00:00 2001
+From: Paul Trowbridge <paul@accendo.co.uk>
+Date: Tue, 18 Aug 2026 13:29:50 +0000
+Subject: [PATCH 2/6] backend: drop the usb backend from the build
+
+No USB printing is expected on these VMs, and usb-unix.c is the only
+part of the SCO port that wants HDK headers (<udi/udi.h>, <sys/lp.h>).
+The ported code stays in the tree; only the build target is removed.
+---
+ backend/Makefile | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/backend/Makefile b/backend/Makefile
+index 4357629..b501245 100644
+--- a/backend/Makefile
++++ b/backend/Makefile
+@@ -22,12 +22,12 @@ include ../Makedefs
+ #
+ 
+ RBACKENDS =	ipp lpd $(DNSSD_BACKEND)
+-UBACKENDS =	$(LEGACY_BACKENDS) serial snmp socket usb
++UBACKENDS =	$(LEGACY_BACKENDS) serial snmp socket
+ UNITTESTS =	test1284 testbackend testsupplies
+ TARGETS =	libbackend.a $(RBACKENDS) $(UBACKENDS)
+ LIBOBJS	=	ieee1284.o network.o runloop.o snmp-supplies.o
+ OBJS	=	ipp.o lpd.o dnssd.o parallel.o serial.o snmp.o \
+-		socket.o test1284.o testbackend.o testsupplies.o usb.o
++		socket.o test1284.o testbackend.o testsupplies.o
+ 
+ 
+ #
