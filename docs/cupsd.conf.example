@@ -142,4 +142,4 @@ WebInterface Yes
 #
 FileDevice Yes
 ServerAlias localhost
-ServerName scoscsi
+ServerName yourhostname

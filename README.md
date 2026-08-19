@@ -8,7 +8,7 @@ Maintenance Pack 4, which dates from **January 2005**.
 $ lpstat -r
 scheduler is running
 
-$ lpadmin -p hp477 -v ipp://192.168.250.154/ipp/print \
+$ lpadmin -p hp477 -v ipp://192.0.2.50/ipp/print \
           -m drv:///sample.drv/generic.ppd -E
 
 $ lp -d hp477 invoice.pdf          # a modern PDF, on a 2005 operating system

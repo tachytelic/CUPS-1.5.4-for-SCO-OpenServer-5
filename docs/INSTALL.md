@@ -42,10 +42,12 @@ nothing outside the prefix. Extract at `/`:
 
 ## Verified on
 
-- **VM 101 `scoscsi`** (192.168.250.248, prox2) — OSR 5.0.7 + MP (rs507d,
-  40 entries), virtio-scsi, no CUPS component. Full pass.
-- **sco-vmware `scosysv`** (10.1.1.13, ESXi) — MP5, stock CUPS 1.1.23 present;
-  ran in parallel on port 6310 without disturbing it.
+- A **Proxmox VM** running OSR 5.0.7 with a maintenance pack applied
+  (`rs507d`, 40 entries in `swconfig`), virtio-scsi, and no CUPS component
+  installed. Full pass.
+- A **VMware/ESXi box** running 5.0.7 MP5 with SCO's stock CUPS 1.1.23 present
+  — this build ran in parallel on port 6310 without disturbing it, which is
+  the recommended way to trial it on a machine you care about.
 
 ## Build note
 
