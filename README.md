@@ -189,3 +189,16 @@ symbol at once, instead of one build cycle at a time.
 ## Licence
 
 GPLv2 / LGPLv2, same as CUPS itself. See [LICENSE](LICENSE).
+
+## See also
+
+- [Ghostscript 9.06 for SCO](https://github.com/tachytelic/Ghostscript-9.06-for-SCO-OpenServer-5)
+  — install this first if you want to print PDFs; it is what `pdftops` calls.
+- [a2ps 4.14 for SCO](https://github.com/tachytelic/a2ps-4.14-for-SCO-OpenServer-5)
+  — text/source → PostScript, the natural way to feed a queue from a script.
+- [curl 7.88.1 for SCO](https://github.com/tachytelic/curl-7.88.1-for-SCO-OpenServer-5)
+  — the first install on a fresh SCO box.
+- [VirtIO drivers for SCO on Proxmox/QEMU](https://github.com/tachytelic/sco-openserver-proxmox)
+  — if you are running OpenServer as a VM.
+- [More SCO OpenServer 5 binaries](https://tachytelic.net/2017/07/sco-openserver-5-binaries/)
+  — the hub.
