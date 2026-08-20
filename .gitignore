@@ -4,3 +4,8 @@
 *.tar.gz
 *.o
 *.log
+
+# Work in progress, kept locally: the SCO custom/Software Manager "vols"
+# distribution format. Not relevant to this repo, which ships an SVR4
+# pkgadd package.
+docs/SSO-FORMAT.md

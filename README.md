@@ -181,10 +181,6 @@ symbol at once, instead of one build cycle at a time.
 - [docs/INSTALL.md](docs/INSTALL.md) — install prerequisites and every
   required config change, in full
 - [docs/cupsd.conf.example](docs/cupsd.conf.example) — a known-good config
-- [docs/SSO-FORMAT.md](docs/SSO-FORMAT.md) — the SCO `custom`/Software Manager
-  "vols" distribution format, reverse-engineered. Not used by this package
-  (which is SVR4 `pkgadd`), but it is the route to a component that could
-  formally supersede SCO's own `cups` via `upgradeVersions`
 
 ## Licence
 
