@@ -1,5 +1,5 @@
-From 5e9b3a4fed6637754c6380de737ee35f68d4fd3c Mon Sep 17 00:00:00 2001
-From: Paul Trowbridge <paul@accendo.co.uk>
+From 274aaacd4b9366cd9a6649148a1a095f60a74ebb Mon Sep 17 00:00:00 2001
+From: Paul Murana <paul@accendo.co.uk>
 Date: Tue, 18 Aug 2026 15:04:25 +0000
 Subject: [PATCH 6/6] build: embed an SVR4 runpath on SCO OpenServer
 

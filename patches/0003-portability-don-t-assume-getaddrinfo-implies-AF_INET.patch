@@ -1,5 +1,5 @@
-From 1f75ba26aae058210ebe3c603d5a1f307233f550 Mon Sep 17 00:00:00 2001
-From: Paul Trowbridge <paul@accendo.co.uk>
+From 49d2bfa0190281f6aac7e1232d1507b1d94e7755 Mon Sep 17 00:00:00 2001
+From: Paul Murana <paul@accendo.co.uk>
 Date: Tue, 18 Aug 2026 13:34:34 +0000
 Subject: [PATCH 3/6] portability: don't assume getaddrinfo implies AF_INET6
 

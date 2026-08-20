@@ -1,5 +1,5 @@
-From 1b154c6c8629c3ba660a3da6d242b2a537156b56 Mon Sep 17 00:00:00 2001
-From: Paul Trowbridge <paul@accendo.co.uk>
+From e109ce7904df201e5f074884c228279fe809ed44 Mon Sep 17 00:00:00 2001
+From: Paul Murana <paul@accendo.co.uk>
 Date: Tue, 18 Aug 2026 13:36:08 +0000
 Subject: [PATCH 4/6] portability: fall back to int when socklen_t is missing
 

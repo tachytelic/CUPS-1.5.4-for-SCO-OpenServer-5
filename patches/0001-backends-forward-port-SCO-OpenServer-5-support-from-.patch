@@ -1,5 +1,5 @@
-From 82eea41d22f07497dcc2ebf8ae2ae1f8dd597771 Mon Sep 17 00:00:00 2001
-From: Paul Trowbridge <paul@accendo.co.uk>
+From 5c140586f7a608817696a2016c83a6e8c70055a9 Mon Sep 17 00:00:00 2001
+From: Paul Murana <paul@accendo.co.uk>
 Date: Tue, 18 Aug 2026 13:28:55 +0000
 Subject: [PATCH 1/6] backends: forward-port SCO OpenServer 5 support from
  cups-1.1.23B-SRC
