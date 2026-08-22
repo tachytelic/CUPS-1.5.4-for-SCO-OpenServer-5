@@ -51,15 +51,14 @@ chokes on anything modern.
 
 ## Install
 
-Grab `prebuilt/cups154-1.5.4.pkg` and:
-
 ```sh
+curl -LO https://github.com/tachytelic/CUPS-1.5.4-for-SCO-OpenServer-5/releases/download/v1.0.0/cups154-1.5.4.pkg.gz
+gunzip cups154-1.5.4.pkg.gz
 pkgadd -d cups154-1.5.4.pkg cups154
 /usr/local/cups154/sbin/cupsd
 ```
 
-(`cups154-1.5.4.pkg.gz` is the same thing, half the download —
-`gunzip` it first, `pkgadd` needs it uncompressed.)
+`pkgadd` needs the package uncompressed, hence the `gunzip` step.
 
 It installs entirely under `/usr/local/cups154` and does **not** touch SCO's
 own `cups` component, so it can sit alongside a stock install. The postinstall

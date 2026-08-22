@@ -9,3 +9,7 @@
 # distribution format. Not relevant to this repo, which ships an SVR4
 # pkgadd package.
 docs/SSO-FORMAT.md
+
+# shipped as a GitHub release asset, not committed
+prebuilt/*.pkg
+prebuilt/*.pkg.gz
