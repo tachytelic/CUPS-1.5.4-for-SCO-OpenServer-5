@@ -195,5 +195,5 @@ GPLv2 / LGPLv2, same as CUPS itself. See [LICENSE](LICENSE).
   — the first install on a fresh SCO box.
 - [VirtIO drivers for SCO on Proxmox/QEMU](https://github.com/tachytelic/sco-openserver-proxmox)
   — if you are running OpenServer as a VM.
-- [More SCO OpenServer 5 binaries](https://tachytelic.net/2017/07/sco-openserver-5-binaries/)
+- [More SCO OpenServer 5 binaries](https://scoexpert.com/guides/sco-openserver-5-binaries/)
   — the hub.
